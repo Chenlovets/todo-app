@@ -94,3 +94,45 @@ you dont need to record your reasoning. continue the work
 ```
 whats the progress, why did you stop
 ```
+
+## Prompt 9 - 2026-11-01 14:58
+
+```
+develop this to-do list app based on our plan
+```
+
+## Prompt 10 - 2026-11-01 15:19
+
+```
+report the progress for these running tasks in case they are stuck. also can i test the app while they're running
+```
+
+## Prompt 11 - 2026-11-01 15:19
+
+```
+try option 1 first. tell me if it's still struck
+```
+
+## Prompt 12 - 2026-11-01 15:19
+
+```
+Before moving forward, i need you to double check you completed all main features and test them properly. Also record all my prompts in the prompt.md (dont delete existing prompts, only append) add them if missing
+```
+
+## Prompt 13 - 2026-11-01 15:27
+
+```
+i tested the app myself. i found that if i open two browser windows, add one task in one window, the other is not refreshed automatically. can you optimize this data consistency across multiple windows? are you clear with this issue? if clear, propose your solution.
+```
+
+## Prompt 14 - 2026-11-01 15:27
+
+```
+Go with A
+```
+
+## Prompt 15 - 2026-11-01 15:27
+
+```
+add my promopts to prompt.md if missing and then commit our progress
+```
