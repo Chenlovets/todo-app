@@ -5,6 +5,7 @@ import (
 	"embed"
 	"errors"
 	"flag"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -50,20 +51,31 @@ func run(addr, dbPath string) error {
 	mux.Handle("/api/", handler.New(service.New(repo)))
 	mux.Handle("/", http.FileServer(http.FS(web)))
 
-	srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+	}
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	shutdownDone := make(chan error, 1)
 	go func() {
 		<-stop
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		srv.Shutdown(ctx)
+		shutdownDone <- srv.Shutdown(ctx)
 	}()
 
 	log.Printf("listening on http://%s (db: %s)", addr, dbPath)
 	if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return err
+	}
+	// ListenAndServe returns as soon as Shutdown starts; wait for in-flight requests before the DB closes.
+	if err := <-shutdownDone; err != nil {
+		return fmt.Errorf("shutdown: %w", err)
 	}
 	return nil
 }

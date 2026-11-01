@@ -4,14 +4,17 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
+	"mime"
 	"net/http"
 	"strconv"
 
 	"todoapp/internal/service"
 )
 
-const maxBodyBytes = 1 << 10
+// maxBodyBytes fits a 200-character title even if a client \u-escapes every character.
+const maxBodyBytes = 4 << 10
 
 // Handler serves the JSON API.
 type Handler struct {
@@ -107,14 +110,30 @@ func parseID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	return id, true
 }
 
-// decodeBody reads a size-limited JSON body; on failure it writes a 400 and returns false.
+// decodeBody reads a JSON request body strictly: Content-Type must be application/json (this also
+// blocks cross-site form posts), size is capped, unknown fields and trailing data are rejected.
+// On failure it writes an error response and returns false.
 func decodeBody(w http.ResponseWriter, r *http.Request, v any) bool {
-	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
-	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+	if mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); err != nil || mt != "application/json" {
+		writeJSON(w, http.StatusUnsupportedMediaType, map[string]string{"error": "Content-Type must be application/json"})
 		return false
 	}
-	return true
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	err := dec.Decode(v)
+	if err == nil {
+		if _, err = dec.Token(); errors.Is(err, io.EOF) {
+			return true
+		}
+	}
+	msg := "invalid JSON body"
+	var tooBig *http.MaxBytesError
+	if errors.As(err, &tooBig) {
+		msg = "request body too large"
+	}
+	writeJSON(w, http.StatusBadRequest, map[string]string{"error": msg})
+	return false
 }
 
 // writeError maps service errors to HTTP statuses; internal details are logged, not returned.

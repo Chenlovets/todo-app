@@ -15,7 +15,7 @@ Design, scope and test plan: [docs/todo-app.md](docs/todo-app.md).
 make run
 ```
 
-Open <http://127.0.0.1:8080>. Stop with Ctrl+C.
+Open <http://127.0.0.1:8080>. Stop with Ctrl+C. If a later start says "address already in use", a previous run is still alive: stop it, or start with a different `-addr` (see below).
 
 Or build a binary and pass flags:
 
@@ -26,18 +26,18 @@ make build
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `-addr` | `127.0.0.1:8080` | listen address |
+| `-addr` | `127.0.0.1:8080` | listen address (the app has no login; keep it on localhost) |
 | `-db` | `data/todo.db` | SQLite file (created if missing) |
 
 ## Using it
 
-**Add a task.** Type a title and press Add (or Enter). Titles are trimmed, must not be empty, and are at most 200 characters. An invalid title shows an error under the input and nothing is added.
+**Add a task.** Type a title and press Add (or Enter). Titles are trimmed, must not be empty, must not contain control characters (such as line breaks), and are at most 200 characters. An invalid title shows an error under the input and nothing is added.
 
 ![empty](screenshots/01-empty.png)
 ![empty title rejected](screenshots/02-empty-title-rejected.png)
 ![added](screenshots/03-added.png)
 
-**Edit a task.** Click Edit, change the title, then Save (or Enter). Cancel (or Escape) discards the change. An empty title is rejected and the old title is kept.
+**Edit a task.** Click Edit, change the title, then Save (or Enter). Cancel (or Escape) discards the change. An empty or invalid title is rejected with an error; the row stays in edit mode (the saved title is unchanged) until you press Cancel or enter a valid title. Only one task is edited at a time: clicking Edit on another row discards the open edit.
 
 ![editing](screenshots/04-editing.png)
 
@@ -53,11 +53,11 @@ make build
 
 ![after restart](screenshots/07-after-restart.png)
 
-**Multiple windows.** A second window picks up changes within about 5 seconds, or immediately when you switch to it. A window that is editing a task is not refreshed, so your typing is safe.
+**Multiple windows.** A second window picks up changes within about 5 seconds, or immediately when you switch to it. A window that is editing a task is not refreshed by polling, and what you typed is kept if you tick or delete other tasks meanwhile. If the task you were editing was deleted in another window, Save shows "task not found" and the row returns to normal.
 
 ## Where data is stored
 
-In the SQLite file given by `-db`, default `data/todo.db` **relative to the directory you start the app from**. SQLite may also create `todo.db-wal` / `todo.db-shm` next to it while running. To start fresh, stop the app and delete the file. `data/` is git-ignored.
+In the SQLite file given by `-db`, default `data/todo.db` **relative to the directory you start the app from**. SQLite may create a short-lived `todo.db-journal` next to it during writes. To start fresh, stop the app and delete the file. `data/` is git-ignored.
 
 ## API
 
@@ -69,7 +69,7 @@ In the SQLite file given by `-db`, default `data/todo.db` **relative to the dire
 | PATCH | `/api/tasks/{id}/toggle` | | 200 task | 404 |
 | DELETE | `/api/tasks/{id}` | | 204 | 404 |
 
-Errors are `{"error":"message"}`: 400 for bad input, malformed JSON, oversized body (over 1 KB) or a non-positive/non-numeric ID; 404 for an unknown ID; 500 with a generic message for internal errors. A wrong HTTP method returns 405 with a plain-text body (not JSON).
+POST and PUT require `Content-Type: application/json` (415 otherwise). Errors are `{"error":"message"}`: 400 for bad input, malformed JSON, unknown fields, trailing data, an oversized body (over 4 KB) or a non-positive/non-numeric ID; 404 for an unknown ID; 500 with a generic message for internal errors. A wrong HTTP method returns 405 with a plain-text body (not JSON).
 
 ## Tests
 

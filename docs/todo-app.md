@@ -12,7 +12,7 @@
 
 **Out of scope:** auth / multi-user, due dates, priorities, tags, search, sync, deployment/Docker, frontend frameworks or build toolchain, pagination, ordering controls.
 
-**Validation:** title is trimmed; must be non-empty; max 200 characters (counted in runes). Unknown ID -> 404. Bad input / malformed JSON -> 400. Never panic.
+**Validation:** title is trimmed; must be non-empty, valid UTF-8, free of control characters (newline, tab, NUL, ...) and at most 200 characters (counted in runes). Unknown ID -> 404. Bad input / malformed JSON -> 400. Wrong Content-Type -> 415. Never panic.
 
 **Acceptance criteria:** as listed in the task brief (add, edit, empty title rejected, delete, toggle, restart persistence, proper errors, table-driven testify tests + lint pass, persistence-across-restart test).
 
@@ -27,7 +27,7 @@
 
 **Layout**
 ```
-cmd/todo/main.go          wiring, flags (-addr, -data), graceful shutdown
+cmd/todo/main.go          wiring, flags (-addr, -db), graceful shutdown
 internal/handler/         HTTP routes, JSON in/out, error mapping
 internal/service/         validation + business logic, Task type, sentinel errors
 internal/repository/      SQLite store (database/sql)
@@ -45,7 +45,7 @@ Dependency direction: handler -> service -> repository. The service defines the 
 | PATCH | /api/tasks/{id}/toggle | - | 200 task | 404 |
 | DELETE | /api/tasks/{id} | - | 204 | 404 |
 
-Errors are `{"error":"message"}`; internal errors return a generic 500 message and are logged at the handler. Routing uses Go 1.22 `net/http` `ServeMux` method+path patterns (no router dependency). `cmd/todo/web/index.html` is embedded with `//go:embed`, so the binary is self-contained. Request bodies are capped (`http.MaxBytesReader`, 1 KB).
+Errors are `{"error":"message"}`; internal errors return a generic 500 message and are logged at the handler. Routing uses Go 1.22 `net/http` `ServeMux` method+path patterns (no router dependency). `cmd/todo/web/index.html` is embedded with `//go:embed`, so the binary is self-contained. Request bodies are capped (`http.MaxBytesReader`, 4 KB: fits a 200-character title even if every character is `\u`-escaped). Body parsing is strict: `Content-Type: application/json` is required on POST/PUT (415 otherwise; this also stops cross-site form posts from adding tasks), unknown fields and trailing data are rejected (400). All SQL uses `?` placeholders, and the page renders titles with `textContent`, so titles are data, never SQL or HTML. The server sets read/write timeouts and listens on `127.0.0.1` by default; there is no auth, so do not bind it to a public address.
 
 **Persistence options**
 
@@ -62,9 +62,9 @@ Errors are `{"error":"message"}`; internal errors return a generic 500 message a
 
 **Risks / notes**
 - SQLite is one machine / one writer at a time; multiple app instances need Postgres (out of scope).
-- Each mutation is a single SQL statement, so it is atomic; no in-memory copy, so memory and disk cannot diverge.
+- Each mutation is a single SQL statement, so it is atomic; no in-memory copy, so memory and disk cannot diverge. Exception: toggle is a read followed by a write (not atomic), see below.
 - Corrupt or unreadable DB file is a startup error.
-- Double-click on toggle simply toggles twice; no idempotency key (single user, out of scope).
+- Toggle is `Get` + `SetCompleted`; two truly concurrent toggles of one task can both read the same state and flip it once. A double-click usually toggles twice. No idempotency key (single user, out of scope).
 
 **Steps (each ends with test + lint, commit, push if a remote exists)**
 1. Scaffold: go.mod, Makefile, main skeleton, `.gitignore`, repository (SQLite) + tests.

@@ -58,6 +58,8 @@ let lastKey = '';
 async function load() {
   try {
     const tasks = await api('GET', '/api/tasks');
+    // The task being edited may have been deleted elsewhere; leave edit mode so polling resumes.
+    if (editingId !== null && !tasks.some(t => t.id === editingId)) editingId = null;
     const key = JSON.stringify([tasks, editingId]);
     if (key === lastKey) return;
     lastKey = key;
@@ -88,6 +90,9 @@ function button(label, cls, onclick) {
 }
 
 function render(tasks) {
+  // Keep what the user typed in an open edit box across re-renders (e.g. after ticking another task).
+  const open = list.querySelector('li input[type=text]');
+  const draft = open ? { id: open.closest('li').dataset.id, value: open.value } : null;
   list.replaceChildren();
   empty.hidden = tasks.length > 0;
   for (const t of tasks) {
@@ -98,7 +103,7 @@ function render(tasks) {
     if (editingId === t.id) {
       const input = document.createElement('input');
       input.type = 'text';
-      input.value = t.title;
+      input.value = draft && draft.id === String(t.id) ? draft.value : t.title;
       input.setAttribute('aria-label', 'Edit title');
       const save = () => run(async () => { await api('PUT', '/api/tasks/' + t.id, { title: input.value }); editingId = null; });
       input.onkeydown = (e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { editingId = null; load(); } };

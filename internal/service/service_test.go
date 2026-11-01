@@ -107,6 +107,14 @@ func TestAddAndEditTitleValidation(t *testing.T) {
 		{"one over max", strings.Repeat("a", MaxTitleLen+1), "", true},
 		{"multibyte counted as runes", strings.Repeat("任", MaxTitleLen), strings.Repeat("任", MaxTitleLen), false},
 		{"multibyte one over", strings.Repeat("任", MaxTitleLen+1), "", true},
+		{"newline inside", "line1\nline2", "", true},
+		{"tab inside", "a\tb", "", true},
+		{"NUL byte", "a\x00b", "", true},
+		{"DEL char", "a\x7fb", "", true},
+		{"C1 control char", "a\u0085b", "", true},
+		{"invalid UTF-8", "a\xffb", "", true},
+		{"SQL-looking text is plain text", "x'); DROP TABLE tasks;--", "x'); DROP TABLE tasks;--", false},
+		{"HTML-looking text is plain text", "<script>alert(1)</script>", "<script>alert(1)</script>", false},
 		{"padding does not count", " " + strings.Repeat("a", MaxTitleLen) + " ", strings.Repeat("a", MaxTitleLen), false},
 	}
 	for _, tt := range tests {

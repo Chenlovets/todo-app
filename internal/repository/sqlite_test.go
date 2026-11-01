@@ -99,6 +99,22 @@ func TestDelete(t *testing.T) {
 	assert.Greater(t, b.ID, a.ID)
 }
 
+// TestHostileTitleStoredLiterally checks that SQL metacharacters are data, not code.
+func TestHostileTitleStoredLiterally(t *testing.T) {
+	ctx := context.Background()
+	s, _ := newStore(t)
+	payload := `x'); DROP TABLE tasks;--`
+
+	a, err := s.Create(ctx, payload)
+	require.NoError(t, err)
+	require.NoError(t, s.UpdateTitle(ctx, a.ID, payload+"2"))
+
+	got, err := s.List(ctx)
+	require.NoError(t, err, "tasks table must still exist")
+	require.Len(t, got, 1)
+	assert.Equal(t, payload+"2", got[0].Title)
+}
+
 func TestGetUnknown(t *testing.T) {
 	s, _ := newStore(t)
 	_, err := s.Get(context.Background(), 42)

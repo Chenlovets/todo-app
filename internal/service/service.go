@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -32,11 +33,18 @@ type Service struct {
 // New creates a Service.
 func New(repo Repository) *Service { return &Service{repo: repo} }
 
-// validateTitle trims the title and checks its length.
+// validateTitle trims the title and checks it before it is stored: non-empty, valid UTF-8,
+// no control characters (newlines, NUL, ...), and at most MaxTitleLen characters.
 func validateTitle(title string) (string, error) {
 	title = strings.TrimSpace(title)
 	if title == "" {
 		return "", fmt.Errorf("%w: must not be empty", ErrInvalidTitle)
+	}
+	if !utf8.ValidString(title) {
+		return "", fmt.Errorf("%w: must be valid UTF-8", ErrInvalidTitle)
+	}
+	if strings.IndexFunc(title, unicode.IsControl) >= 0 {
+		return "", fmt.Errorf("%w: must not contain control characters", ErrInvalidTitle)
 	}
 	if utf8.RuneCountInString(title) > MaxTitleLen {
 		return "", fmt.Errorf("%w: must be at most %d characters", ErrInvalidTitle, MaxTitleLen)

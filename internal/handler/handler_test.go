@@ -24,7 +24,14 @@ func newServer(t *testing.T) http.Handler {
 }
 
 func do(h http.Handler, method, path, body string) *httptest.ResponseRecorder {
+	return doCT(h, method, path, body, "application/json")
+}
+
+func doCT(h http.Handler, method, path, body, contentType string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	return rec
@@ -82,7 +89,12 @@ func TestErrors(t *testing.T) {
 		{"add malformed json", "POST", "/api/tasks", `{"title":`, 400, "JSON"},
 		{"add empty body", "POST", "/api/tasks", ``, 400, "JSON"},
 		{"add wrong type", "POST", "/api/tasks", `{"title":123}`, 400, "JSON"},
-		{"add oversized body", "POST", "/api/tasks", `{"title":"` + strings.Repeat("a", 2000) + `"}`, 400, "JSON"},
+		{"add oversized body", "POST", "/api/tasks", `{"title":"` + strings.Repeat("a", maxBodyBytes) + `"}`, 400, "too large"},
+		{"add trailing garbage", "POST", "/api/tasks", `{"title":"x"} garbage`, 400, "JSON"},
+		{"add second json value", "POST", "/api/tasks", `{"title":"x"}{"title":"y"}`, 400, "JSON"},
+		{"add unknown field", "POST", "/api/tasks", `{"title":"x","completed":true}`, 400, "JSON"},
+		{"add control char escaped", "POST", "/api/tasks", `{"title":"a\u0000b"}`, 400, "control"},
+		{"add newline escaped", "POST", "/api/tasks", `{"title":"a\nb"}`, 400, "control"},
 		{"edit unknown id", "PUT", "/api/tasks/999", `{"title":"x"}`, 404, "not found"},
 		{"edit non-numeric id", "PUT", "/api/tasks/abc", `{"title":"x"}`, 400, "id"},
 		{"edit zero id", "PUT", "/api/tasks/0", `{"title":"x"}`, 400, "id"},
@@ -107,6 +119,58 @@ func TestErrors(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestContentType(t *testing.T) {
+	tests := []struct {
+		name, contentType string
+		wantStatus        int
+	}{
+		{"json", "application/json", 201},
+		{"json with charset", "application/json; charset=utf-8", 201},
+		{"missing", "", 415},
+		{"text/plain (cross-site form trick)", "text/plain", 415},
+		{"form", "application/x-www-form-urlencoded", 415},
+		{"garbage", "a/b/c;;", 415},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newServer(t)
+			rec := doCT(h, "POST", "/api/tasks", `{"title":"x"}`, tt.contentType)
+			assert.Equal(t, tt.wantStatus, rec.Code)
+			if tt.wantStatus == 415 {
+				rec = do(h, "GET", "/api/tasks", "")
+				assert.JSONEq(t, `[]`, rec.Body.String(), "rejected request must not create a task")
+			}
+		})
+	}
+	// PUT is checked the same way.
+	h := newServer(t)
+	do(h, "POST", "/api/tasks", `{"title":"keep"}`)
+	assert.Equal(t, 415, doCT(h, "PUT", "/api/tasks/1", `{"title":"changed"}`, "text/plain").Code)
+}
+
+func TestBodyLimitFitsMaxTitle(t *testing.T) {
+	h := newServer(t)
+	// 200 characters, each sent as a 6-byte \u escape (1200 bytes) and as 4-byte emoji must be accepted.
+	escaped := strings.Repeat(`\u00e9`, service.MaxTitleLen)
+	rec := do(h, "POST", "/api/tasks", `{"title":"`+escaped+`"}`)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+	rec = do(h, "POST", "/api/tasks", `{"title":"`+strings.Repeat("😀", service.MaxTitleLen)+`"}`)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+}
+
+func TestHostileTitleRoundTrip(t *testing.T) {
+	h := newServer(t)
+	for _, title := range []string{`x'); DROP TABLE tasks;--`, `<script>alert(1)</script>`, `" OR 1=1 --`} {
+		body, _ := json.Marshal(map[string]string{"title": title})
+		rec := do(h, "POST", "/api/tasks", string(body))
+		require.Equal(t, http.StatusCreated, rec.Code)
+		assert.Equal(t, title, decodeTask(t, rec).Title)
+	}
+	rec := do(h, "GET", "/api/tasks", "")
+	assert.Equal(t, http.StatusOK, rec.Code, "table must survive")
+	assert.Contains(t, rec.Body.String(), "DROP TABLE")
 }
 
 func TestRejectedEditKeepsTitle(t *testing.T) {
