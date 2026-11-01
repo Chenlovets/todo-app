@@ -88,3 +88,9 @@ yes I approve
 ```
 you dont need to record your reasoning. continue the work
 ```
+
+## Prompt 8 - 2026-11-01 14:55
+
+```
+whats the progress, why did you stop
+```

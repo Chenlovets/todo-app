@@ -31,7 +31,7 @@ cmd/todo/main.go          wiring, flags (-addr, -data), graceful shutdown
 internal/handler/         HTTP routes, JSON in/out, error mapping
 internal/service/         validation + business logic, Task type, sentinel errors
 internal/repository/      SQLite store (database/sql)
-web/index.html            single page (inline CSS + JS)
+cmd/todo/web/index.html   single page (inline CSS + JS), embedded
 Makefile  README.md  prompt.md  reflection.md  docs/  screenshots/
 ```
 Dependency direction: handler -> service -> repository. The service defines the small `Repository` interface it consumes (needed anyway so service tests can use a fake).
@@ -45,7 +45,7 @@ Dependency direction: handler -> service -> repository. The service defines the 
 | PATCH | /api/tasks/{id}/toggle | - | 200 task | 404 |
 | DELETE | /api/tasks/{id} | - | 204 | 404 |
 
-Errors are `{"error":"message"}`; internal errors return a generic 500 message and are logged at the handler. Routing uses Go 1.22 `net/http` `ServeMux` method+path patterns (no router dependency). `web/index.html` is embedded with `//go:embed`, so the binary is self-contained. Request bodies are capped (`http.MaxBytesReader`, 1 KB).
+Errors are `{"error":"message"}`; internal errors return a generic 500 message and are logged at the handler. Routing uses Go 1.22 `net/http` `ServeMux` method+path patterns (no router dependency). `cmd/todo/web/index.html` is embedded with `//go:embed`, so the binary is self-contained. Request bodies are capped (`http.MaxBytesReader`, 1 KB).
 
 **Persistence options**
 
