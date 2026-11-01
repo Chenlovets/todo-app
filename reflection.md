@@ -1,6 +1,15 @@
+# AI Usage Write-up Answer
+
+1. Before prompting, i list the required features, deliverables, requirements and constraints, then ask my claude agent to initiaite a raw prompt structure to me based on my local CLAUDE.md file, which records my working habit and genral guidence for development work.
+2. The AI misidentified some risk and overlooked some testing issue, i ask it to start a seperate review and testing agents to help.
+3. I did not deleget review and test to the main agent itself, but used subagent instead because it's better with a clean slate. Also i test the interfaces myself multiple times to give AI an actual human test feedback and added a few optimiztion features.
+4. I encountered some API error regarding reasoning extraction a few times becasue i tell AI to record thought process before starting to code, which triggered the error. I tried to delete the promot in the polluted session but it still camp up. So I restart a new session and let AI starts clean slate to code based our discussed plan, which is what i should've done in the first place. Also a throughout code review and assessment with another agent like codex could benefit with more time.
+
+---
+
 # Reflection
 
-Based only on what happened in this project. Sources: `prompt.md` (your 22 prompts), `.dev-log/todo-app.md` (my per-step notes) and the work after the last context reset. I have no record of my own replies to prompts 1-8 beyond what the dev-log and docs say, so (a) and (b) for that stretch lean on those.
+Based only on what happened in this project. Sources: `prompt.md` (your 24 prompts), `.dev-log/todo-app.md` (my per-step notes) and the work after the last context reset. I have no record of my own replies to prompts 1-8 beyond what the dev-log and docs say, so (a) and (b) for that stretch lean on those.
 
 ## (a) Discussion and key decisions
 
