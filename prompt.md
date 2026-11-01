@@ -142,3 +142,21 @@ add my promopts to prompt.md if missing and then commit our progress
 ```
 now you can write README.md and reflection.md
 ```
+
+## Prompt 17 - 2026-11-01 15:34
+
+```
+okay lets see if the README is clear enough. start a subagent, dont give it any context, simply ask it to follow the steps in README and return YES if it can start the app and test our main features properly.
+```
+
+## Prompt 18 - 2026-11-01 15:38
+
+```
+yes run a stricter pass. Plus let the subagent review our implement and final product.
+```
+
+## Prompt 19 - 2026-11-01 15:46
+
+```
+yes fix them. also consider saftey issues, for example user input may attack your system or db so check user input before adding to database
+```
