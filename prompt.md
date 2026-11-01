@@ -136,3 +136,9 @@ Go with A
 ```
 add my promopts to prompt.md if missing and then commit our progress
 ```
+
+## Prompt 16 - 2026-11-01 15:29
+
+```
+now you can write README.md and reflection.md
+```
