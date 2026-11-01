@@ -52,12 +52,26 @@ async function api(method, path, body) {
 
 function showError(e) { errorBox.textContent = e ? e.message : ''; }
 
+// lastKey lets load() skip re-rendering when nothing changed (avoids flicker and lost focus).
+let lastKey = '';
+
 async function load() {
   try {
-    render(await api('GET', '/api/tasks'));
-    showError(null);
+    const tasks = await api('GET', '/api/tasks');
+    const key = JSON.stringify([tasks, editingId]);
+    if (key === lastKey) return;
+    lastKey = key;
+    render(tasks);
   } catch (e) { showError(e); }
 }
+
+// refresh picks up changes made in other windows; it must not rebuild the list under an open edit box.
+function refresh() {
+  if (editingId === null && !document.hidden) load();
+}
+setInterval(refresh, 5000);
+window.addEventListener('focus', refresh);
+document.addEventListener('visibilitychange', refresh);
 
 // run performs an action, then reloads the list; errors are shown inline.
 async function run(fn) {

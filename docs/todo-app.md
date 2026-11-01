@@ -58,6 +58,8 @@ Errors are `{"error":"message"}`; internal errors return a generic 500 message a
 
 **Chosen: A (SQLite).** Driver `modernc.org/sqlite` (pure Go). Default DB path `./data/todo.db`, override with `-db`. One table created at startup with `CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, completed INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL)`. `AUTOINCREMENT` so IDs are not reused after delete. `SetMaxOpenConns(1)` plus a busy timeout to avoid "database is locked". Plain SQL, no ORM, no migration framework. No `user_id` column yet (multi-user is out of scope; it is a one-line migration later).
 
+**Multi-window consistency:** the page reloads the list on window focus / visibility change and every 5 s while visible (frontend only). Polling is skipped while a task is being edited so the edit box is not rebuilt. Considered and rejected: SSE (needs a pub/sub broker, breaks with multiple instances), `BroadcastChannel`/`storage` events (same browser only). Known limit: a stale window can still act on an outdated list; toggle flips the server's current state.
+
 **Risks / notes**
 - SQLite is one machine / one writer at a time; multiple app instances need Postgres (out of scope).
 - Each mutation is a single SQL statement, so it is atomic; no in-memory copy, so memory and disk cannot diverge.
