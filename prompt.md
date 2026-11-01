@@ -160,3 +160,9 @@ yes run a stricter pass. Plus let the subagent review our implement and final pr
 ```
 yes fix them. also consider saftey issues, for example user input may attack your system or db so check user input before adding to database
 ```
+
+## Prompt 20 - 2026-11-01 15:56
+
+```
+Lets do a final check of all the requirements accroding to our plan before we push
+```
