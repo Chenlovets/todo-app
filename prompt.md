@@ -166,3 +166,15 @@ yes fix them. also consider saftey issues, for example user input may attack you
 ```
 Lets do a final check of all the requirements accroding to our plan before we push
 ```
+
+## Prompt 21 - 2026-11-01 15:58
+
+```
+Give me an example of " Wrong-method requests return a plain-text 405."
+```
+
+## Prompt 22 - 2026-11-01 16:03
+
+```
+okay fair. keep it as is. now do an update on everythigng that is stale, commit them, and push to remote git@github.com:Chenlovets/todo-app.git
+```

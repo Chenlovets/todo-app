@@ -72,6 +72,8 @@ Errors are `{"error":"message"}`; internal errors return a generic 500 message a
 3. Handler (API) + tests with `httptest`.
 4. Web page + wiring in `main.go`; manual run verified.
 5. Screenshots (headless browser as dev-only tool), README, reflection.md.
+6. Added after manual testing: refresh across windows (see "Multi-window consistency").
+7. Added after an independent review: input hardening (control characters, Content-Type, strict JSON, 4 KB cap), graceful-shutdown fix, edit-mode fixes, doc corrections.
 
 ## 3. Test plan
 
@@ -84,5 +86,11 @@ Table-driven, testify `assert`/`require`; run with `make test` (`go test -race .
 **Handler** (`httptest` + real service on a temp-DB repo): each endpoint's happy path and status code; empty title -> 400; malformed JSON -> 400; oversized body -> 400; non-numeric / unknown ID -> 400 / 404; wrong method -> 405; error body shape `{"error":...}`.
 
 **Manual / end-to-end:** run the real binary, exercise add/edit/toggle/delete in the browser, restart, confirm data persists; screenshots come from this run.
+
+**Added with steps 6-7**
+- Repository: a title containing SQL metacharacters is stored and read back literally and the table survives.
+- Service: newline/tab/NUL/DEL/C1 control characters and invalid UTF-8 rejected; SQL- and HTML-looking text accepted as plain text.
+- Handler: wrong or missing Content-Type -> 415 (POST and PUT, nothing is created); unknown field, trailing data, escaped control characters -> 400; body over 4 KB -> 400 "too large"; a 200-character title sent as `\u` escapes or as emoji fits the cap; hostile titles round-trip unchanged. The wrong-method 405 body is Go's plain text, not JSON (accepted, documented in the README).
+- Browser (throwaway headless-Chrome scripts, not in the repo, so not run by `make test`): two windows see add/toggle/delete; an open edit box survives polling and unrelated actions; editing a task deleted elsewhere shows "task not found" and polling resumes.
 
 **Mocks:** only the repository interface in service tests; no other external dependencies.
